@@ -1058,7 +1058,7 @@ do
   if vim.g.neovide then
     --for diasbling mouse while typing
     vim.g.neovide_hide_mouse_when_typing = true
- 
+
     --keymaps for zooming in or out in neovide
     vim.keymap.set('n', '<C-=>', function() vim.g.neovide_scale_factor = vim.g.neovide_scale_factor + 0.1 end)
     vim.keymap.set('n', '<C-->', function() vim.g.neovide_scale_factor = vim.g.neovide_scale_factor - 0.1 end)
