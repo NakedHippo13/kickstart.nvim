@@ -99,7 +99,7 @@ do
   vim.g.maplocalleader = ' '
 
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- [[ Setting options ]]
   --  See `:help vim.o`
@@ -240,6 +240,51 @@ do
   -- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
   -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
 
+  -- Move current line up/down in Normal mode
+  vim.keymap.set('n', '<M-k>', ':m .-2<CR>==', { silent = true })
+  vim.keymap.set('n', '<M-j>', ':m .+1<CR>==', { silent = true })
+
+  -- Move selected lines up/down in Visual mode
+  vim.keymap.set('v', '<M-k>', ":m '<-2<CR>gv=gv", { silent = true })
+  vim.keymap.set('v', '<M-j>', ":m '>+1<CR>gv=gv", { silent = true })
+
+  --for some reason s was diabled
+  vim.keymap.set('n', 's', '"_s')
+
+  --for gcc autocompile and run
+  vim.keymap.set('n', '<leader>r', function()
+    vim.cmd.write()
+    local file = vim.fn.expand('%:p')
+    local out = vim.fn.expand('%:p:r')
+    local cmd = 'cd "' .. vim.fn.expand('%:p:h') .. '" && gcc "' .. file .. '" -o "' .. out .. '" && "' .. out .. '"'
+    vim.cmd('split | terminal ' .. cmd)
+    vim.cmd.startinsert()
+  end, { desc = 'Compile and run C file' })
+
+
+  vim.keymap.set('n', '-', function()
+    local reveal_file = vim.fn.expand('%:p')
+    if (reveal_file == '') then
+      reveal_file = vim.fn.getcwd()
+    else
+      local f = io.open(reveal_file, "r")
+      if (f) then
+        f.close(f)
+      else
+        reveal_file = vim.fn.getcwd()
+      end
+    end
+    require('neo-tree.command').execute({
+      action = "focus",          -- OPTIONAL, this is the default value
+      source = "filesystem",     -- OPTIONAL, this is the default value
+      position = "left",         -- OPTIONAL, this is the default value
+      reveal_file = reveal_file, -- path to file or folder to reveal
+      reveal_force_cwd = true,   -- change cwd without asking if needed
+    })
+    end,
+    { desc = "Open neo-tree at current file or working directory" }
+  );
+
   -- [[ Basic Autocommands ]]
   --  See `:help lua-guide-autocommands`
 
@@ -250,6 +295,16 @@ do
     desc = 'Highlight when yanking (copying) text',
     group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
     callback = function() vim.hl.on_yank() end,
+  })
+
+  --start nvim in C folder in a specific directory
+  vim.api.nvim_create_autocmd('VimEnter', {
+    desc = 'Start in a specific directory on launch',
+    group = vim.api.nvim_create_augroup('Start-in-directory', {clear = true}),
+    callback = function()
+      vim.fn.chdir('C:/Programming/C- A Modern Approach')
+      vim.cmd('Neotree')
+    end,
   })
 end
 
@@ -327,7 +382,7 @@ local function gh(repo) return 'https://github.com/' .. repo end
 
 -- ============================================================
 -- SECTION 4: UI / CORE UX PLUGINS
--- guess-indent, gitsigns, which-key, colorscheme, todo-comments, mini modules
+-- guess-indent, gitsigns, which-key, colorscheme, todo-comments, mini modules, gui client
 -- ============================================================
 do
   -- [[ Installing and Configuring Plugins ]]
@@ -386,7 +441,7 @@ do
   ---@diagnostic disable-next-line: missing-fields
   require('tokyonight').setup {
     styles = {
-      comments = { italic = false }, -- Disable italics in comments
+      comments = { italic = true }, -- Disable italics in comments
     },
   }
 
@@ -394,6 +449,16 @@ do
   -- Like many other themes, this one has different styles, and you could load
   -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
   vim.cmd.colorscheme 'tokyonight-night'
+
+  -- Custom highlight overrides
+  vim.api.nvim_set_hl(0, "@function",                   { fg = "#61AFEF" })  -- function names (e.g. main)
+  vim.api.nvim_set_hl(0, "@function.call",              { fg = "#61AFEF" })  -- function calls (e.g. printf)
+  vim.api.nvim_set_hl(0, "@variable",                   { fg = "#E06C75" })  -- variable names (e.g. ch)
+  vim.api.nvim_set_hl(0, "@type",                       { fg = "#bb9af7" })  -- types (e.g. int, char)
+  vim.api.nvim_set_hl(0, "@type.builtin",               { fg = "#bb9af7" })  -- built-in types (e.g. unsigned)
+  vim.api.nvim_set_hl(0, "@keyword.import.c",           { fg = "#bb9af7" })  -- #include
+  vim.api.nvim_set_hl(0, "@keyword.directive.define.c", { fg = "#bb9af7" })  -- #define
+  vim.api.nvim_set_hl(0, "@string.escape",              { fg = "#00bfff" })  -- escape sequences (\n,\102)
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
@@ -437,7 +502,7 @@ do
   --  and try some other statusline plugin
   local statusline = require 'mini.statusline'
   -- Set `use_icons` to true if you have a Nerd Font
-  statusline.setup { use_icons = vim.g.have_nerd_font }
+  statusline.setup { use_icons = true }
 
   -- You can configure sections in the statusline by overriding their
   -- default behavior. For example, here we set the section for
@@ -692,7 +757,12 @@ do
   --  See `:help lsp-config` for information about keys and how to configure
   ---@type table<string, vim.lsp.Config>
   local servers = {
-    -- clangd = {},
+    clangd = {
+     cmd = {
+      "clangd",
+      "--query-driver=C:/msys64/ucrt64/bin/gcc.exe",
+     },
+    },
     -- gopls = {},
     -- pyright = {},
     -- rust_analyzer = {},
@@ -967,16 +1037,45 @@ do
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
   -- require 'kickstart.plugins.debug'
-  -- require 'kickstart.plugins.indent_line'
+  require 'kickstart.plugins.indent_line'
   -- require 'kickstart.plugins.lint'
-  -- require 'kickstart.plugins.autopairs'
-  -- require 'kickstart.plugins.neo-tree'
+  require 'kickstart.plugins.autopairs'
+  require 'kickstart.plugins.neo-tree'
   -- require 'kickstart.plugins.gitsigns' -- adds gitsigns recommended keymaps
 
   -- NOTE: You can add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- require 'custom.plugins'
+  require 'custom.plugins'
+end
+
+-- ============================================================
+-- SECTION 11: GUI CLIENT OPTIONS
+-- Neovide for now
+-- ============================================================
+do
+  --happens explicitly in neovide
+  if vim.g.neovide then
+    --for diasbling mouse while typing
+    vim.g.neovide_hide_mouse_when_typing = true
+ 
+    --keymaps for zooming in or out in neovide
+    vim.keymap.set('n', '<C-=>', function() vim.g.neovide_scale_factor = vim.g.neovide_scale_factor + 0.1 end)
+    vim.keymap.set('n', '<C-->', function() vim.g.neovide_scale_factor = vim.g.neovide_scale_factor - 0.1 end)
+
+    --for changing the neovide app's ribbon
+    vim.g.neovide_title_background_color = string.format(
+      "%x",
+      vim.api.nvim_get_hl(0, {id=vim.api.nvim_get_hl_id_by_name("Normal")}).bg
+    )
+  -- Function to handle native, clean pasting from the system clipboard
+    local function paste()
+      vim.api.nvim_paste(vim.fn.getreg("+"), true, -1)
+    end
+
+    -- Map Ctrl+V across Normal, Insert, Visual, Command, and Terminal modes
+    vim.keymap.set({ "n", "i", "v", "c", "t" }, "<C-v>", paste, { silent = true, desc = "Paste from clipboard" })
+  end
 end
 
 -- The line beneath this is called `modeline`. See `:help modeline`
